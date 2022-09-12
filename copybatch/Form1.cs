@@ -205,5 +205,56 @@ namespace copybatch
 
             MessageBox.Show("批量修改成功");
         }
+
+
+        /// <summary>
+        /// 删除文件名前面的数字
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void button5_Click(object sender, EventArgs e)
+        {
+            if (string.IsNullOrEmpty(txtSourceFile.Text))
+            {
+                MessageBox.Show("请选择源文件");
+                return;
+            }
+
+            var sourceFiles = txtSourceFile.Text.Split(',');
+
+            foreach (var source in sourceFiles)
+            {
+                // 遍历文件及子文件夹
+                listDirectory(source);
+
+            }
+        }
+
+        private void listDirectory(string path)
+        {
+            DirectoryInfo theFolder = new DirectoryInfo(@path);
+
+            //遍历文件
+            foreach (FileInfo NextFile in theFolder.GetFiles())
+            {
+                try
+                {
+                    var fileName = NextFile.Name.Split('-')[1];
+                    var newPath = Path.Combine(NextFile.DirectoryName, fileName);
+                    File.Move(NextFile.FullName, newPath);
+                }
+                catch (Exception)
+                {
+
+                }
+            }
+
+            //遍历文件夹
+            foreach (DirectoryInfo NextFolder in theFolder.GetDirectories())
+            {
+                listDirectory(NextFolder.FullName);
+            }
+        }
+
     }
 }
