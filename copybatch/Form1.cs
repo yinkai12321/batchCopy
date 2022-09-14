@@ -228,6 +228,8 @@ namespace copybatch
                 listDirectory(source);
 
             }
+
+            MessageBox.Show("批量修改成功");
         }
 
         private void listDirectory(string path)
