@@ -1,3 +1,4 @@
+using Manina.Windows.Forms;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -5,9 +6,11 @@ using System.Data;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using static Manina.Windows.Forms.ImageListView;
 
 namespace copybatch
 {
@@ -70,7 +73,36 @@ namespace copybatch
 
         private void Form1_Load(object sender, EventArgs e)
         {
+            imageListView1.AllowDuplicateFileNames = true;
+            //imageListView1.SetRenderer(new ImageListViewRenderers.DefaultRenderer());
+            imageListView1.SortColumn = 0;
+            imageListView1.SortOrder = Manina.Windows.Forms.SortOrder.AscendingNatural;
+            // Find and add built-in renderers
+            Assembly assembly = Assembly.GetAssembly(typeof(ImageListView));
+            string cacheDir = Path.Combine(
+                Path.GetDirectoryName(new Uri(assembly.GetName().CodeBase).LocalPath),
+                "Cache"
+                );
+            if (!Directory.Exists(cacheDir))
+                Directory.CreateDirectory(cacheDir);
+            imageListView1.PersistentCacheDirectory = cacheDir;
+            imageListView1.Columns.Add(ColumnType.Name);
+            imageListView1.Columns.Add(ColumnType.Dimensions);
+            imageListView1.Columns.Add(ColumnType.FileSize);
+            imageListView1.Columns.Add(ColumnType.FolderName);
+            imageListView1.Columns.Add(ColumnType.DateModified);
+            imageListView1.Columns.Add(ColumnType.FileType);
+            var col = new ImageListView.ImageListViewColumnHeader(ColumnType.Custom, "random", "Random");
+            col.Comparer = new RandomColumnComparer();
+            imageListView1.Columns.Add(col);
 
+        }
+        public class RandomColumnComparer : IComparer<ImageListViewItem>
+        {
+            public int Compare(ImageListViewItem x, ImageListViewItem y)
+            {
+                return int.Parse(x.SubItems["random"].Text).CompareTo(int.Parse(y.SubItems["random"].Text));
+            }
         }
 
         private void button3_Click(object sender, EventArgs e)
@@ -258,5 +290,116 @@ namespace copybatch
             }
         }
 
+
+        /// <summary>
+        /// 图片裁剪选择文件夹
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void button6_Click(object sender, EventArgs e)
+        {
+            FolderBrowserDialog dialog = new FolderBrowserDialog();
+            dialog.Description = "请选择文件路径";
+            if (dialog.ShowDialog() == DialogResult.OK)
+            {
+                string foldPath = dialog.SelectedPath;
+
+                txtCutSelectFolder.Text = foldPath;
+
+                GetSelectImg(foldPath);
+            }
+        }
+
+
+        private void GetSelectImg(string path)
+        {
+            DirectoryInfo theFolder = new DirectoryInfo(path);
+            Random rnd = new Random();
+
+            var selectFolder = txtSetSelectFolder.Text.Split(';');
+            if (selectFolder.Where(t=>t == theFolder.Name).Count() > 0)
+            {
+                //遍历文件
+                foreach (FileInfo p in theFolder.GetFiles())
+                {
+                    try
+                    {
+                        if (p.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) ||
+                            p.Name.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||
+                            p.Name.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ||
+                            p.Name.EndsWith(".bmp", StringComparison.OrdinalIgnoreCase) ||
+                            p.Name.EndsWith(".ico", StringComparison.OrdinalIgnoreCase) ||
+                            p.Name.EndsWith(".cur", StringComparison.OrdinalIgnoreCase) ||
+                            p.Name.EndsWith(".emf", StringComparison.OrdinalIgnoreCase) ||
+                            p.Name.EndsWith(".wmf", StringComparison.OrdinalIgnoreCase) ||
+                            p.Name.EndsWith(".tif", StringComparison.OrdinalIgnoreCase) ||
+                            p.Name.EndsWith(".tiff", StringComparison.OrdinalIgnoreCase) ||
+                            p.Name.EndsWith(".gif", StringComparison.OrdinalIgnoreCase))
+                        {
+                            ImageListViewItem item = new ImageListViewItem(p.FullName);
+                            item.SubItems.Add("random", rnd.Next(0, 999).ToString("000"));
+                            imageListView1.Items.Add(item);
+                        }
+                    }
+                    catch (Exception)
+                    {
+
+                    }
+                }
+            }
+         
+
+            //遍历文件夹
+            foreach (DirectoryInfo NextFolder in theFolder.GetDirectories())
+            {
+                GetSelectImg(NextFolder.FullName);
+            }
+        }
+
+
+        /// <summary>
+        /// 裁剪
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void button7_Click(object sender, EventArgs e)
+        {
+
+        }
+
+
+        /// <summary>
+        /// 裁剪(备份文件)
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void button8_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        /// <summary>
+        ///  更改图片列表显示模式
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void radioButton1_CheckedChanged(object sender, EventArgs e)
+        {
+            RadioButton rbn = sender as RadioButton;
+
+            //第一种
+            if (rbn.Checked)
+            {
+                string tag = rbn.Text.ToString();
+                switch (tag)
+                {
+                    case "缩略图": imageListView1.View = Manina.Windows.Forms.View.Thumbnails;  break;
+                    case "画廊": imageListView1.View = Manina.Windows.Forms.View.Gallery; break;
+                    case "窗格": imageListView1.View = Manina.Windows.Forms.View.Pane; break;
+                    case "详细": imageListView1.View = Manina.Windows.Forms.View.Details; break;
+                    default: break;
+                }
+            }
+        }
     }
 }
