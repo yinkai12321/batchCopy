@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using static Manina.Windows.Forms.ImageListView;
@@ -19,6 +20,7 @@ namespace copybatch
         public Form1()
         {
             InitializeComponent();
+            this.WindowState = FormWindowState.Maximized;
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -299,14 +301,27 @@ namespace copybatch
         private void button6_Click(object sender, EventArgs e)
         {
             FolderBrowserDialog dialog = new FolderBrowserDialog();
+            // 如果应用程序设置中保存有上次选择的文件夹路径，则将其设置为初始文件夹路径
+            if (!string.IsNullOrEmpty(Properties.Settings.Default.LastFolderPath))
+            {
+                dialog.SelectedPath = Properties.Settings.Default.LastFolderPath;
+            }
+
             dialog.Description = "请选择文件路径";
             if (dialog.ShowDialog() == DialogResult.OK)
             {
+                // 保存所选文件夹的路径到应用程序设置中
+                Properties.Settings.Default.LastFolderPath = dialog.SelectedPath;
+                Properties.Settings.Default.Save();
+
                 string foldPath = dialog.SelectedPath;
 
                 txtCutSelectFolder.Text = foldPath;
 
+                imageListView1.Items.Clear();
+
                 GetSelectImg(foldPath);
+
             }
         }
 
@@ -364,7 +379,54 @@ namespace copybatch
         /// <param name="e"></param>
         private void button7_Click(object sender, EventArgs e)
         {
+            var filenameList = imageListView1.Items;
+            foreach (var item in filenameList)
+            {
+                var img = Image.FromFile(item.FileName);
+                Image croppedImage = null;
+                if (numTopPx.Value > 0)
+                {
+                    // 裁剪像素
+                    var cutpx = Convert.ToInt32(numTopPx.Value);
+                    croppedImage = MovePxImg(img, cutpx, "上");
+                }
+                else if (numLeftPx.Value > 0)
+                {
+                    // 裁剪像素
+                    var cutpx = Convert.ToInt32(numLeftPx.Value);
+                    croppedImage = MovePxImg(img, cutpx, "左");
+                }
+                else if (numDownPx.Value > 0)
+                {
+                    // 裁剪像素
+                    var cutpx = Convert.ToInt32(numDownPx.Value);
+                    croppedImage = MovePxImg(img, cutpx, "下");
+                }
+                else if (numRightPx.Value > 0)
+                {
+                    // 裁剪像素
+                    var cutpx = Convert.ToInt32(numRightPx.Value);
+                    croppedImage = MovePxImg(img, cutpx, "右");
+                }
+                else if (numFullPx.Value > 0)
+                {
+                    // 裁剪像素
+                    var cutpx = Convert.ToInt32(numFullPx.Value);
+                    croppedImage = MovePxImg(img, cutpx, "四周");
+                }
 
+                if (croppedImage == null)
+                {
+                    MessageBox.Show("请输入裁剪像素！");
+                    return;
+                }
+
+                img.Dispose();
+
+                croppedImage.Save(item.FileName);
+            }
+
+            MessageBox.Show("裁剪成功。");
         }
 
 
@@ -375,7 +437,138 @@ namespace copybatch
         /// <param name="e"></param>
         private void button8_Click(object sender, EventArgs e)
         {
+            var filenameList = imageListView1.Items;
+            foreach (var item in filenameList)
+            {
+                var img = Image.FromFile(item.FileName);
+                Image croppedImage = null;
+                if (numTopPx.Value > 0)
+                {
+                    // 裁剪像素
+                    var cutpx = Convert.ToInt32(numTopPx.Value);
+                    croppedImage = MovePxImg(img, cutpx,"上");
+                }
+                else if (numLeftPx.Value > 0)
+                {
+                    // 裁剪像素
+                    var cutpx = Convert.ToInt32(numLeftPx.Value);
+                    croppedImage = MovePxImg(img, cutpx, "左");
+                }
+                else if (numDownPx.Value > 0)
+                {
+                    // 裁剪像素
+                    var cutpx = Convert.ToInt32(numDownPx.Value);
+                    croppedImage = MovePxImg(img, cutpx, "下");
+                }
+                else if (numRightPx.Value > 0)
+                {
+                    // 裁剪像素
+                    var cutpx = Convert.ToInt32(numRightPx.Value);
+                    croppedImage = MovePxImg(img, cutpx, "右");
+                }
+                else if (numFullPx.Value > 0)
+                {
+                    // 裁剪像素
+                    var cutpx = Convert.ToInt32(numFullPx.Value);
+                    croppedImage = MovePxImg(img, cutpx, "四周");
+                }
 
+                if (croppedImage == null)
+                {
+                    MessageBox.Show("请输入裁剪像素！");
+                    return;
+                }
+
+                var bakPath = Path.Combine(item.FilePath, "bak");
+                if (!Directory.Exists(bakPath))
+                {
+                    Directory.CreateDirectory(bakPath);
+                }
+
+                var path = Path.Combine(bakPath, item.FileName.Split('\\').Last());
+                croppedImage.Save(path);
+            }
+            MessageBox.Show("裁剪成功。图片保存至BAK文件夹");
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        public Image MovePxImg(Image img,int cutpx, string type)
+        {
+            var zoomImg = ZoomImage(img, cutpx);
+
+            Rectangle cropRectangle = new Rectangle();
+            if (type == "上")
+            {
+                cropRectangle = new Rectangle(cutpx/2, cutpx, zoomImg.Width - cutpx, zoomImg.Height - cutpx);
+            }
+            else if (type == "左")
+            {
+                cropRectangle = new Rectangle(cutpx, cutpx/2, zoomImg.Width - cutpx, zoomImg.Height - cutpx);
+
+            }
+            else if (type == "下")
+            {
+                cropRectangle = new Rectangle(cutpx/2, 0, zoomImg.Width - cutpx, zoomImg.Height - cutpx);
+            }
+            else if (type == "右")
+            {
+                cropRectangle = new Rectangle(0, cutpx/2, zoomImg.Width - cutpx, zoomImg.Height - cutpx);
+            }
+            else if (type == "四周")
+            {
+                cropRectangle = new Rectangle(cutpx/2, cutpx/2, zoomImg.Width - cutpx, zoomImg.Height - cutpx);
+            }
+
+            Image croppedImage = CropImage(zoomImg, cropRectangle);
+            return croppedImage;
+        }
+
+
+        /// <summary>
+        /// 放大图片
+        /// </summary>
+        /// <param name="sourceImage"></param>
+        /// <param name="zoomSize"></param>
+        /// <returns></returns>
+        public Image ZoomImage(Image sourceImage, int zoomSize)
+        {
+            int width = sourceImage.Width + zoomSize;
+            int height = sourceImage.Height + zoomSize;
+            Bitmap zoomedBitmap = new Bitmap(width, height);
+
+            using (Graphics graphics = Graphics.FromImage(zoomedBitmap))
+            {
+                // 设置绘图质量，以便更好地缩放图像
+                graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                graphics.DrawImage(sourceImage, new Rectangle(zoomSize/2, zoomSize/2, sourceImage.Width, sourceImage.Height));
+
+                // 在 Bitmap 上绘制缩放后的图像，并拉伸以适应 Bitmap 的大小
+                graphics.DrawImage(sourceImage, new Rectangle(0, 0, sourceImage.Width + zoomSize, sourceImage.Height + zoomSize),
+                    new Rectangle(0, 0, sourceImage.Width, sourceImage.Height), GraphicsUnit.Pixel);
+            }
+
+            return zoomedBitmap;
+        }
+
+        /// <summary>
+        /// 裁剪图片
+        /// </summary>
+        /// <param name="sourceImage"></param>
+        /// <param name="cropRectangle"></param>
+        /// <returns></returns>
+        public Image CropImage(Image sourceImage, Rectangle cropRectangle)
+        {
+            Bitmap croppedBitmap = new Bitmap(cropRectangle.Width, cropRectangle.Height);
+
+            using (Graphics graphics = Graphics.FromImage(croppedBitmap))
+            {
+                graphics.DrawImage(sourceImage, new Rectangle(0, 0, croppedBitmap.Width, croppedBitmap.Height), cropRectangle, GraphicsUnit.Pixel);
+            }
+
+            return croppedBitmap;
         }
 
         /// <summary>
